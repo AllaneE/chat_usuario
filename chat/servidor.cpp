@@ -7,25 +7,32 @@ Aceite uma conexão de um cliente.
 Receber e enviar dados.
 Desconectar.*/
 
-#define WIN32_LEAN_AND_MEAN
+#undef UNICODE
 
+#define WIN32_LEAN_AND_MEAN
+#define WIN32_WINNT 0x0501
+
+#include <ws2tcpip.h>
 #include <windows.h>
 #include <winsock2.h>
-#include <ws2tcpip.h>
-#include <iphlpapi.h>
+#include <stdlib.h>
 #include <stdio.h>
+#include <thread>
+#include <mutex>
+#include <iphlpapi.h>
 
 #pragma comment(lib, "Ws2_32.lib")
 
-#define DEFAULT_PORT "80"
+#define DEFAULT_PORT "27015"
+
+
 int main(){
 
     WSADATA wsadata;
     int iResultado;
 
-    SOCKET ListenSocket = INVALID_SOCKET;
-
     struct addrinfo *resultado = NULL, *ptr = NULL, hints;
+    SOCKET ListenSocket = INVALID_SOCKET;
 
     // inicializando winsock
     iResultado = WSAStartup(MAKEWORD(2,2), &wsadata);
@@ -57,5 +64,35 @@ int main(){
         WSACleanup();
         return 1;
     }
+
+    //Associar o soquete com a porta, por bin
+    iResultado = bind(ListenSocket, resultado ->ai_addr, (int)resultado->ai_addrlen);
+    freeaddrinfo(resultado);
+
+    if(listen(ListenSocket, SOMAXCONN)==SOCKET_ERROR){
+        printf("Error %d\n", WSAGetLastError());
+        WSACleanup();
+        return 1;
+    }
+   
+    //Servidor aceita conexão
+    while(true){
+        SOCKET ClienteSocket;
+        ClienteSocket = accept(ListenSocket,NULL,NULL);
+        if(ClienteSocket == INVALID_SOCKET){
+            printf("conexão falha: %d\n",WSAGetLastError());
+            closesocket(ListenSocket);
+            WSACleanup();
+            return 1;
+        }
+
+    //bloqueio de vazamento de dadoos
+    //thread para varias conexões 
+
+    }
+
+    closesocket(ListenSocket);
+    WSACleanup();
+
     return 0;
 }
