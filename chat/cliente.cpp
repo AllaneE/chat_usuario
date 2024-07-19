@@ -11,7 +11,7 @@ int main(int argc, char *argv[]) {
     WSADATA wsaData;
     int iResult;
 
-    // Inicializa o Winsock
+    // Inicializando o Winsock
     iResult = WSAStartup(MAKEWORD(2,2), &wsaData);
     if (iResult != 0) {
         printf("WSAStartup falhou: %d\n", iResult);
@@ -25,7 +25,7 @@ int main(int argc, char *argv[]) {
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_protocol = IPPROTO_TCP;
 
-    // Resolve o endereço e a porta do servidor
+    // Resolvendo o endereço e a porta do servidor
     iResult = getaddrinfo(argv[1], DEFAULT_PORT, &hints, &result);
     if (iResult != 0) {
         printf("getaddrinfo falhou: %d\n", iResult);
@@ -35,10 +35,10 @@ int main(int argc, char *argv[]) {
 
     SOCKET ConnectSocket = INVALID_SOCKET;
 
-    // Tenta conectar ao primeiro endereço retornado pela chamada ao getaddrinfo
+    // Tentando conectar ao primeiro endereço retornado pela chamada ao getaddrinfo
     ptr = result;
 
-    // Cria um SOCKET para conectar ao servidor
+    // Criando um SOCKET para conectar ao servidor
     ConnectSocket = socket(ptr->ai_family, ptr->ai_socktype, ptr->ai_protocol);
     if (ConnectSocket == INVALID_SOCKET) {
         printf("Erro no socket(): %ld\n", WSAGetLastError());
@@ -47,7 +47,7 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    // Conecta ao servidor
+    // Conectando ao servidor
     iResult = connect(ConnectSocket, ptr->ai_addr, (int)ptr->ai_addrlen);
     if (iResult == SOCKET_ERROR) {
         closesocket(ConnectSocket);
@@ -61,8 +61,6 @@ int main(int argc, char *argv[]) {
         WSACleanup();
         return 1;
     }
-
-    // Aqui, você pode continuar enviando/recebendo dados usando ConnectSocket
 
     // Limpeza
     closesocket(ConnectSocket);
