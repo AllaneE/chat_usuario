@@ -5,6 +5,8 @@
 #include <ws2tcpip.h>
 #include <winsock2.h>
 #include <stdio.h>
+#include <iostream>
+#include <string>
 
 // Link com a biblioteca ws2_32.lib
 #pragma comment(lib, "Ws2_32.lib")
@@ -12,10 +14,9 @@
 int main(int argc, char *argv[]) {
     WSADATA wsaData;
     int iResult;
+    std::string msg;
 
-    int recvbuflen = DEFAULT_BUFLEN;
-
-    const char *sendbuf = "this is a test";
+    int recvbuflen = DEFAULT_BUFLEN; 
     char recvbuf[DEFAULT_BUFLEN];
 
     // Inicializando o Winsock
@@ -69,37 +70,35 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    // Send an initial buffer
-    iResult = send(ConnectSocket, sendbuf, (int) strlen(sendbuf), 0);
-    if (iResult == SOCKET_ERROR) {
-        printf("send failed: %d\n", WSAGetLastError());
-        closesocket(ConnectSocket);
-        WSACleanup();
-        return 1;
-    }
-
-    printf("Bytes Sent: %ld\n", iResult);
-
-    // shutdown the connection for sending since no more data will be sent
-    // the client can still use the ConnectSocket for receiving data
-    iResult = shutdown(ConnectSocket, SD_SEND);
-    if (iResult == SOCKET_ERROR) {
-        printf("shutdown failed: %d\n", WSAGetLastError());
-        closesocket(ConnectSocket);
-        WSACleanup();
-        return 1;
-    }
-
-    // Receive data until the server closes the connection
+    // Enviar um buffer inicial
     do {
+        std::cout << "Mensagem: ";
+        std::getline(std::cin, msg);
+        const char *sendbuf = msg.c_str();
+        iResult = send(ConnectSocket, sendbuf, (int) strlen(sendbuf), 0);
+        if (iResult == SOCKET_ERROR) {
+            printf("Falha no envio: %d\n", WSAGetLastError());
+            closesocket(ConnectSocket);
+            WSACleanup();
+            return 1;
+        }
+        // Limpar o buffer de recepção
+        memset(recvbuf, 0, recvbuflen);
+
+        // Receber dados até o servidor fechar a conexão
+        
         iResult = recv(ConnectSocket, recvbuf, recvbuflen, 0);
-        if (iResult > 0)
-            printf("Bytes received: %d\n", iResult);
-        else if (iResult == 0)
-            printf("Connection closed\n");
-        else
-            printf("recv failed: %d\n", WSAGetLastError());
-    } while (iResult > 0);
+        if (iResult > 0){
+            printf("Mensagem recebida: %s\n", recvbuf);
+            memset(recvbuf, 0, recvbuflen);
+            }
+        else if (iResult == 0){
+            printf("Conexão fechada\n");
+        }
+        else{
+            printf("Falha na recepção: %d\n", WSAGetLastError());
+        }
+    } while (iResult>0);
 
     // Limpeza
     closesocket(ConnectSocket);
@@ -107,4 +106,3 @@ int main(int argc, char *argv[]) {
 
     return 0;
 }
-
