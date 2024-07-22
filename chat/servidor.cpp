@@ -11,6 +11,8 @@ Desconectar.*/
 
 #define WIN32_LEAN_AND_MEAN
 #define _WIN32_WINNT 0x0501
+#define DEFAULT_PORT "27015"
+#define DEFAULT_BUFLEN 512
 
 #include <ws2tcpip.h>
 #include <windows.h>
@@ -23,13 +25,13 @@ Desconectar.*/
 
 #pragma comment(lib, "Ws2_32.lib")
 
-#define DEFAULT_PORT "27015"
-
-
 int main(){
-
+    
     WSADATA wsadata;
     int iResultado;
+    char recvbuf[DEFAULT_BUFLEN];
+    int iSendResult;
+    int recvbuflen = DEFAULT_BUFLEN;
 
     struct addrinfo *resultado = NULL, *ptr = NULL, hints;
     SOCKET ListenSocket = INVALID_SOCKET;
@@ -88,11 +90,38 @@ int main(){
 
     //bloqueio de vazamento de dadoos
     //thread para varias conexões 
+    do {
+
+        iResultado = recv(ClienteSocket, recvbuf, recvbuflen, 0);
+        if (iResultado > 0) {
+            printf("Bytes received: %d\n", iResultado);
+
+            // Echo the buffer back to the sender
+            iSendResult = send(ClienteSocket, recvbuf, iResultado, 0);
+            if (iSendResult == SOCKET_ERROR) {
+                printf("send failed: %d\n", WSAGetLastError());
+                closesocket(ClienteSocket);
+                WSACleanup();
+                return 1;
+            }
+            printf("Bytes sent: %d\n", iSendResult);
+        } else if (iResultado == 0)
+            printf("Connection closing...\n");
+        else {
+            printf("recv failed: %d\n", WSAGetLastError());
+            closesocket(ClienteSocket);
+            WSACleanup();
+            return 1;
+        }
+
+    } while (iResultado > 0);
 
     }
 
+    // Receive until the peer shuts down the connection
+    
+
     closesocket(ListenSocket);
     WSACleanup();
-
     return 0;
 }
