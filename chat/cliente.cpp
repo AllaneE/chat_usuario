@@ -15,7 +15,7 @@
 
 std::atomic<bool> running(true);
 
-void receiveMessages(SOCKET ConnectSocket) {
+void receberMensagens(SOCKET ConnectSocket) {
     char recvbuf[DEFAULT_BUFLEN];
     int recvbuflen = DEFAULT_BUFLEN;
     int iResult;
@@ -37,11 +37,26 @@ void receiveMessages(SOCKET ConnectSocket) {
         }
     }
 }
+int enviarMensagens(SOCKET ConnectSocket){
+    int iResult;
+    std::string msg;
 
+    std::cout << "Mensagem: ";
+    std::getline(std::cin, msg);
+    const char *sendbuf = msg.c_str();
+
+    iResult = send(ConnectSocket, sendbuf, (int)strlen(sendbuf), 0);
+    if (iResult == SOCKET_ERROR) {
+        printf("Falha no envio: %d\n", WSAGetLastError());
+        running = false;
+        return 1;
+    }
+    return 0;
+}
 int main(int argc, char *argv[]) {
     WSADATA wsaData;
     int iResult;
-    std::string msg;
+    
 
     // Inicializando o Winsock
     iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
@@ -95,19 +110,11 @@ int main(int argc, char *argv[]) {
     }
 
     // Iniciar thread para receber mensagens
-    std::thread receiver(receiveMessages, ConnectSocket);
+    std::thread receiver(receberMensagens, ConnectSocket);
 
     // Enviar mensagens ao servidor
     do {
-        std::cout << "Mensagem: ";
-        std::getline(std::cin, msg);
-        const char *sendbuf = msg.c_str();
-        iResult = send(ConnectSocket, sendbuf, (int)strlen(sendbuf), 0);
-        if (iResult == SOCKET_ERROR) {
-            printf("Falha no envio: %d\n", WSAGetLastError());
-            running = false;
-            break;
-        }
+        enviarMensagens(ConnectSocket);
     } while (running);
 
     // Limpeza
