@@ -4,6 +4,7 @@
 #define _WIN32_WINNT 0x0501
 #define DEFAULT_PORT "27015"
 #define DEFAULT_BUFLEN 512
+#define MAX_CONEXOES 10
 
 #include <ws2tcpip.h>
 #include <windows.h>
@@ -14,48 +15,55 @@
 #include <thread>
 #include <vector>
 
-void handle_client(SOCKET ClientSocket) {
-    int iResult;
+void handle_client(SOCKET ClientSocket[], int id) {
+    int iResult, i;
     char recvbuf[DEFAULT_BUFLEN];
     int recvbuflen = DEFAULT_BUFLEN;
 
     // Receber e enviar dados
     do {
-        iResult = recv(ClientSocket, recvbuf, recvbuflen, 0);
+        iResult = recv(ClientSocket[id], recvbuf, recvbuflen, 0);
         if (iResult > 0) {
             printf("Bytes recebidos: %d\n", iResult);
 
             // Ecoar o buffer de volta para o remetente
-            int iSendResult = send(ClientSocket, recvbuf, iResult, 0);
-            if (iSendResult == SOCKET_ERROR) {
-                printf("Falha no envio: %d\n", WSAGetLastError());
-                closesocket(ClientSocket);
-                return;
+            for (i = 0; i <= sizeof(ClientSocket)/sizeof(*ClientSocket); i++) {
+                if(ClientSocket[i] != ClientSocket[id]){
+                    int iSendResult = send(ClientSocket[i], recvbuf, iResult, 0);
+                if (iSendResult == SOCKET_ERROR) {
+                    printf("Falha no envio: %d\n", WSAGetLastError());
+                    closesocket(ClientSocket[i]);
+                    return;
+                }
+                }
+                // printf("Bytes enviados: %d\nMensagem recebida: %s\n", iSendResult, recvbuf);
+                // memset(recvbuf, 0, recvbuflen);
             }
-            printf("Bytes enviados: %d\nMensagem recebida: %s\n", iSendResult, recvbuf);
-            memset(recvbuf, 0, recvbuflen);
-        } else if (iResult == 0) {
+        }
+        else if (iResult == 0) {
             printf("Conexão fechando...\n");
         } else {
             printf("Falha na recepção: %d\n", WSAGetLastError());
-            closesocket(ClientSocket);
+            closesocket(ClientSocket[id]);
             return;
         }
     } while (iResult > 0);
 
     // Limpeza
-    closesocket(ClientSocket);
+    closesocket(ClientSocket[id]);
 }
 
 int main() {
     WSADATA wsadata;
     int iResultado;
+    int id = 0;
     struct addrinfo *resultado = NULL, *ptr = NULL, hints;
     SOCKET ListenSocket = INVALID_SOCKET;
+    SOCKET clientes_conectados[MAX_CONEXOES];
     std::vector<std::thread> threads;
 
     // Inicializando Winsock
-    iResultado = WSAStartup(MAKEWORD(2,2), &wsadata);
+    iResultado = WSAStartup(MAKEWORD(2, 2), &wsadata);
     if (iResultado != 0) {
         printf("WSAStartup falhou: %d\n", iResultado);
         return 1;
@@ -103,30 +111,31 @@ int main() {
     }
 
     // Servidor aceita conexões
-    while (true) {
-        SOCKET ClienteSocket = INVALID_SOCKET;
-        ClienteSocket = accept(ListenSocket, NULL, NULL);
-        if (ClienteSocket == INVALID_SOCKET) {
+    while (id < MAX_CONEXOES) {
+        clientes_conectados[id] = accept(ListenSocket, NULL, NULL);
+        if (clientes_conectados[id] == INVALID_SOCKET) {
             printf("Conexão falhou: %d\n", WSAGetLastError());
             closesocket(ListenSocket);
             WSACleanup();
             return 1;
         }
+        printf("Cliente conectado com socket: %d\n", clientes_conectados[id]);
 
         // Criar uma nova thread para tratar o cliente
-        threads.emplace_back(handle_client, ClienteSocket);
+        threads.emplace_back(handle_client, clientes_conectados, id);
+        id += 1;
     }
 
-    // Limpeza (não será alcançado devido ao loop infinito)
-    closesocket(ListenSocket);
-    WSACleanup();
-
-    // Espera todas as threads terminarem (não será alcançado devido ao loop infinito)
+    // Espera todas as threads terminarem
     for (auto& t : threads) {
         if (t.joinable()) {
             t.join();
         }
     }
+
+    // Limpeza
+    closesocket(ListenSocket);
+    WSACleanup();
 
     return 0;
 }

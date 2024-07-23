@@ -7,20 +7,44 @@
 #include <stdio.h>
 #include <iostream>
 #include <string>
+#include <thread>
+#include <atomic>
 
 // Link com a biblioteca ws2_32.lib
 #pragma comment(lib, "Ws2_32.lib")
+
+std::atomic<bool> running(true);
+
+void receiveMessages(SOCKET ConnectSocket) {
+    char recvbuf[DEFAULT_BUFLEN];
+    int recvbuflen = DEFAULT_BUFLEN;
+    int iResult;
+
+    while (running) {
+        // Receber dados do servidor
+        iResult = recv(ConnectSocket, recvbuf, recvbuflen, 0);
+        if (iResult > 0) {
+            recvbuf[iResult] = '\0';  // Null-terminate the received string
+            printf("\nMensagem recebida: %s\n", recvbuf);
+        }
+        else if (iResult == 0) {
+            printf("Conexão fechada pelo servidor\n");
+            running = false;
+        }
+        else {
+            printf("Falha na recepção: %d\n", WSAGetLastError());
+            running = false;
+        }
+    }
+}
 
 int main(int argc, char *argv[]) {
     WSADATA wsaData;
     int iResult;
     std::string msg;
 
-    int recvbuflen = DEFAULT_BUFLEN; 
-    char recvbuf[DEFAULT_BUFLEN];
-
     // Inicializando o Winsock
-    iResult = WSAStartup(MAKEWORD(2,2), &wsaData);
+    iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
     if (iResult != 0) {
         printf("WSAStartup falhou: %d\n", iResult);
         return 1;
@@ -70,37 +94,24 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    // Enviar um buffer inicial
+    // Iniciar thread para receber mensagens
+    std::thread receiver(receiveMessages, ConnectSocket);
+
+    // Enviar mensagens ao servidor
     do {
         std::cout << "Mensagem: ";
         std::getline(std::cin, msg);
         const char *sendbuf = msg.c_str();
-        iResult = send(ConnectSocket, sendbuf, (int) strlen(sendbuf), 0);
+        iResult = send(ConnectSocket, sendbuf, (int)strlen(sendbuf), 0);
         if (iResult == SOCKET_ERROR) {
             printf("Falha no envio: %d\n", WSAGetLastError());
-            closesocket(ConnectSocket);
-            WSACleanup();
-            return 1;
+            running = false;
+            break;
         }
-        // Limpar o buffer de recepção
-        memset(recvbuf, 0, recvbuflen);
-
-        // Receber dados até o servidor fechar a conexão
-        
-        iResult = recv(ConnectSocket, recvbuf, recvbuflen, 0);
-        if (iResult > 0){
-            printf("Mensagem recebida: %s\n", recvbuf);
-            memset(recvbuf, 0, recvbuflen);
-            }
-        else if (iResult == 0){
-            printf("Conexão fechada\n");
-        }
-        else{
-            printf("Falha na recepção: %d\n", WSAGetLastError());
-        }
-    } while (iResult>0);
+    } while (running);
 
     // Limpeza
+    receiver.join();
     closesocket(ConnectSocket);
     WSACleanup();
 
