@@ -15,17 +15,17 @@
 
 std::atomic<bool> running(true);
 
-void receberMensagens(SOCKET ConnectSocket) {
-    char recvbuf[DEFAULT_BUFLEN];
-    int recvbuflen = DEFAULT_BUFLEN;
+void receberMensagens(SOCKET connectSocket) {
+    char recvBuf[DEFAULT_BUFLEN];
+    int recvBufLen = DEFAULT_BUFLEN;
     int iResult;
 
     while (running) {
         // Receber dados do servidor
-        iResult = recv(ConnectSocket, recvbuf, recvbuflen, 0);
+        iResult = recv(connectSocket, recvBuf, recvBufLen, 0);
         if (iResult > 0) {
-            recvbuf[iResult] = '\0';  // Null-terminate the received string
-            printf("%s\n", recvbuf);
+            recvBuf[iResult] = '\0';  // Null-terminate the received string
+            printf("%s\n", recvBuf);
         }
         else if (iResult == 0) {
             printf("Conexão fechada pelo servidor\n");
@@ -37,18 +37,19 @@ void receberMensagens(SOCKET ConnectSocket) {
         }
     }
 }
-int enviarMensagens(SOCKET ConnectSocket){
+
+int enviarMensagens(SOCKET connectSocket) {
     int iResult;
     std::string msg;
 
     std::cout << "Mensagem: ";
     std::getline(std::cin, msg);
-    if(msg=="/exit"){
-        closesocket(ConnectSocket);
+    if (msg == "/exit") {
+        closesocket(connectSocket);
     }
-    const char *sendbuf = msg.c_str();
+    const char *sendBuf = msg.c_str();
 
-    iResult = send(ConnectSocket, sendbuf, (int)strlen(sendbuf), 0);
+    iResult = send(connectSocket, sendBuf, (int)strlen(sendBuf), 0);
     if (iResult == SOCKET_ERROR) {
         printf("Falha no envio: %d\n", WSAGetLastError());
         running = false;
@@ -56,10 +57,10 @@ int enviarMensagens(SOCKET ConnectSocket){
     }
     return 0;
 }
+
 int main(int argc, char *argv[]) {
     WSADATA wsaData;
     int iResult;
-    
 
     // Inicializando o Winsock
     iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
@@ -83,14 +84,14 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    SOCKET ConnectSocket = INVALID_SOCKET;
+    SOCKET connectSocket = INVALID_SOCKET;
 
     // Tentando conectar ao primeiro endereço retornado pela chamada ao getaddrinfo
     ptr = result;
 
     // Criando um SOCKET para conectar ao servidor
-    ConnectSocket = socket(ptr->ai_family, ptr->ai_socktype, ptr->ai_protocol);
-    if (ConnectSocket == INVALID_SOCKET) {
+    connectSocket = socket(ptr->ai_family, ptr->ai_socktype, ptr->ai_protocol);
+    if (connectSocket == INVALID_SOCKET) {
         printf("Erro no socket(): %ld\n", WSAGetLastError());
         freeaddrinfo(result);
         WSACleanup();
@@ -98,31 +99,31 @@ int main(int argc, char *argv[]) {
     }
 
     // Conectando ao servidor
-    iResult = connect(ConnectSocket, ptr->ai_addr, (int)ptr->ai_addrlen);
+    iResult = connect(connectSocket, ptr->ai_addr, (int)ptr->ai_addrlen);
     if (iResult == SOCKET_ERROR) {
-        closesocket(ConnectSocket);
-        ConnectSocket = INVALID_SOCKET;
+        closesocket(connectSocket);
+        connectSocket = INVALID_SOCKET;
     }
 
     freeaddrinfo(result);
 
-    if (ConnectSocket == INVALID_SOCKET) {
+    if (connectSocket == INVALID_SOCKET) {
         printf("Não foi possível conectar ao servidor!\n");
         WSACleanup();
         return 1;
     }
 
     // Iniciar thread para receber mensagens
-    std::thread receiver(receberMensagens, ConnectSocket);
+    std::thread receiver(receberMensagens, connectSocket);
 
     // Enviar mensagens ao servidor
     do {
-        enviarMensagens(ConnectSocket);
+        enviarMensagens(connectSocket);
     } while (running);
 
     // Limpeza
     receiver.join();
-    closesocket(ConnectSocket);
+    closesocket(connectSocket);
     WSACleanup();
 
     return 0;
