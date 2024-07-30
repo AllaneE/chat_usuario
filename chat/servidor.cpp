@@ -6,6 +6,8 @@
 #define DEFAULT_BUFLEN 512
 #define MAX_CONEXOES 10
 
+int conexoes_ativas=0;
+
 #include <ws2tcpip.h>
 #include <windows.h>
 #include <winsock2.h>
@@ -31,13 +33,14 @@ void handle_client(SOCKET ClientSocket[], int id) {
             printf("Bytes recebidos: %d\n", iResult);
 
             // Ecoar o buffer de volta para o remetente
-            for (i = 0; i <= sizeof(ClientSocket)-MAX_CONEXOES; i++) {
+            for (i = 0; i <= conexoes_ativas; i++) {
                 if(ClientSocket[i] != ClientSocket[id]){
                     int iSendResult = send(ClientSocket[i], msg, sizeof(msg), 0);
                     iSendResult = send(ClientSocket[i], recvbuf, iResult, 0);
                 if (iSendResult == SOCKET_ERROR) {
                     printf("Falha no envio: %d\n", WSAGetLastError());
                     closesocket(ClientSocket[i]);
+                    conexoes_ativas -=1;
                     return;
                 }
                 }
@@ -50,6 +53,7 @@ void handle_client(SOCKET ClientSocket[], int id) {
         } else {
             printf("Falha na recepção: %d\n", WSAGetLastError());
             closesocket(ClientSocket[id]);
+            conexoes_ativas -=1;
             return;
         }
     } while (iResult > 0);
@@ -103,6 +107,7 @@ int main() {
     if (iResultado == SOCKET_ERROR) {
         printf("Erro no bind: %d\n", WSAGetLastError());
         closesocket(ListenSocket);
+        conexoes_ativas -=1;
         WSACleanup();
         return 1;
     }
@@ -111,6 +116,7 @@ int main() {
     if (listen(ListenSocket, SOMAXCONN) == SOCKET_ERROR) {
         printf("Erro no listen: %d\n", WSAGetLastError());
         closesocket(ListenSocket);
+        conexoes_ativas -=1;
         WSACleanup();
         return 1;
     }
@@ -125,10 +131,11 @@ int main() {
             return 1;
         }
         printf("Cliente conectado com socket: %d\n", clientes_conectados[id]);
-
+        conexoes_ativas += 1;
         // Criar uma nova thread para tratar o cliente
         threads.emplace_back(handle_client, clientes_conectados, id);
         id += 1;
+        
     }
 
     // Espera todas as threads terminarem

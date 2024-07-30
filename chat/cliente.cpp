@@ -43,6 +43,9 @@ int enviarMensagens(SOCKET ConnectSocket){
 
     std::cout << "Mensagem: ";
     std::getline(std::cin, msg);
+    if(msg=="/exit"){
+        closesocket(ConnectSocket);
+    }
     const char *sendbuf = msg.c_str();
 
     iResult = send(ConnectSocket, sendbuf, (int)strlen(sendbuf), 0);
