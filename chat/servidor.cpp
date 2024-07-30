@@ -14,12 +14,16 @@
 #include <iphlpapi.h>
 #include <thread>
 #include <vector>
+#include <iostream>
 
 void handle_client(SOCKET ClientSocket[], int id) {
     int iResult, i;
     char recvbuf[DEFAULT_BUFLEN];
     int recvbuflen = DEFAULT_BUFLEN;
-
+    const char* nomes_usuario[MAX_CONEXOES]={"Lara-croft", "Mario", "Agent-47", "Sonic", "Sackboy", "Pac-man", "Link", "Master-Chief", "Kratos", "Shadowheart"};
+    char msg[DEFAULT_BUFLEN];
+    strcpy(msg, nomes_usuario[id]);
+    strcat(msg, " diz: \0");
     // Receber e enviar dados
     do {
         iResult = recv(ClientSocket[id], recvbuf, recvbuflen, 0);
@@ -27,9 +31,10 @@ void handle_client(SOCKET ClientSocket[], int id) {
             printf("Bytes recebidos: %d\n", iResult);
 
             // Ecoar o buffer de volta para o remetente
-            for (i = 0; i <= sizeof(ClientSocket)/sizeof(*ClientSocket); i++) {
+            for (i = 0; i <= sizeof(ClientSocket)-MAX_CONEXOES; i++) {
                 if(ClientSocket[i] != ClientSocket[id]){
-                    int iSendResult = send(ClientSocket[i], recvbuf, iResult, 0);
+                    int iSendResult = send(ClientSocket[i], msg, sizeof(msg), 0);
+                    iSendResult = send(ClientSocket[i], recvbuf, iResult, 0);
                 if (iSendResult == SOCKET_ERROR) {
                     printf("Falha no envio: %d\n", WSAGetLastError());
                     closesocket(ClientSocket[i]);

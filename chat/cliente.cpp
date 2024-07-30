@@ -25,7 +25,7 @@ void receberMensagens(SOCKET ConnectSocket) {
         iResult = recv(ConnectSocket, recvbuf, recvbuflen, 0);
         if (iResult > 0) {
             recvbuf[iResult] = '\0';  // Null-terminate the received string
-            printf("\nMensagem recebida: %s\n", recvbuf);
+            printf("%s\n", recvbuf);
         }
         else if (iResult == 0) {
             printf("Conexão fechada pelo servidor\n");
