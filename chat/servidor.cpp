@@ -6,7 +6,7 @@
 #define DEFAULT_BUFLEN 512
 #define MAX_CONEXOES 10
 
-int conexoesAtivas=0;
+int conexoesAtivas = 0;
 
 #include <ws2tcpip.h>
 #include <windows.h>
@@ -33,10 +33,10 @@ void handleClient(SOCKET ClientSocket[], int id) {
             printf("Bytes recebidos: %d\n", iResult);
 
             // Ecoar o buffer de volta para o remetente
-            for (i = 0; i <= conexoesAtivas; i++) {
+            for (i = 0; i < conexoesAtivas; i++) {
                 if(ClientSocket[i] != ClientSocket[id]){
-                    int iSendResult = send(ClientSocket[i], msg, sizeof(msg), 0);
-                    iSendResult = send(ClientSocket[i], recvBuf, iResult, 0);
+                    send(ClientSocket[i], msg, sizeof(msg), 0);
+                    int iSendResult = send(ClientSocket[i], recvBuf, iResult, 0);
                 if (iSendResult == SOCKET_ERROR) {
                     printf("Falha no envio: %d\n", WSAGetLastError());
                     closesocket(ClientSocket[i]);
@@ -150,3 +150,4 @@ int main() {
     WSACleanup();
 
     return 0;
+}
